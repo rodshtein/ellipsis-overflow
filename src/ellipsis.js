@@ -8,53 +8,75 @@ const visibilityHidden = `
   visibility:hidden;
   pointer-events:none;`
 
+const fillStyle = `
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;`
+
 export function ellipsis(node, {
   cutLenght = 0,
   overflowBadge = '…'
 }={} ) {
-  const text = node.innerText;
-  const textLenght = text.length;
+  let firstInit = true;
 
   let cls = node.getAttribute('class');
   let textHeight = node.clientHeight;
-  let viewportWidth = node.clientWidth;
+  let textIndents = () => {
+    let margin = 'margin:' + getComputedStyle(node).margin + ';';
+    let padding = 'padding' + getComputedStyle(node).padding + ';';
+    return margin + padding;
+  }
+
+  // tester node
+  let tester = document.createElement('span');
+  let viewportWidth;
+  let viewportHeight;
 
   // Make Shadow
   let shadowParagraph = node.cloneNode(true);
-  shadowParagraph.style.width = viewportWidth + 'px';
   document.body.append(shadowParagraph)
-  shadowParagraph.innerText = text
+  shadowParagraph.innerText = node.innerText
 
-  // Wrapper
-  let wrap = document.createElement('div');
-  wrap.style.height = '100%';
-  node.before(wrap)
-  wrap.append(node)
+  // Height tester
+  function measureSize() {
+    node.append(tester)
+    tester.style.cssText = fillStyle + textIndents()
+
+    viewportWidth = tester.clientWidth
+    viewportHeight = tester.clientHeight
+
+
+    shadowParagraph.style.width = viewportWidth + 'px'
+
+    calc()
+  }
+
+
+  // define styles
+  node.style.position = 'unset';
+  node.parentNode.style.position = 'relative';
 
 
   function calc(){
-    // Define container height;
-    let viewportHeight = wrap.clientHeight;
-    let overflowRatio = viewportHeight / ( textHeight / 100);
 
-      console.log(wrap)
-      console.log(shadowParagraph)
-      console.log(shadowParagraph.clientHeight)
-      console.log(viewportHeight)
+    let overflowRatio = viewportHeight / ( textHeight / 100);
 
     if(shadowParagraph.clientHeight <= viewportHeight){
       // revert
       // event
     } else {
-      let sliceLenght = Math.round(textLenght / 100 * overflowRatio);
+      let sliceLenght = Math.round(node.innerText.length / 100 * overflowRatio);
 
       sliceString(sliceLenght)
     }
   }
 
   function sliceString(lenght, prevOverflow) {
-    let viewportHeight = wrap.clientHeight;
-    let string = text.substr(0, lenght) + overflowBadge;
+    let string = node.innerText.substr(0, lenght) + overflowBadge;
     let textHeight;
 
     shadowParagraph.innerText = string
@@ -63,7 +85,7 @@ export function ellipsis(node, {
     // for strin decrease
     if( textHeight > viewportHeight ){
       if( prevOverflow == false ){
-        cutText(--lenght)
+        addShortText(--lenght)
       } else {
         sliceString(--lenght, true)
       }
@@ -72,28 +94,29 @@ export function ellipsis(node, {
     // for string increase
     if( textHeight <= viewportHeight ){
       if( prevOverflow == true ) {
-        cutText(lenght)
+        addShortText(lenght)
       } else {
         sliceString(++lenght, false)
       }
     }
   }
 
-  function cutText(lenght){
-    let string = text.substr(0, lenght - cutLenght) + overflowBadge;
-    node.innerText = string
+  function addShortText(lenght){
+    let string = node.innerText.substr(0, lenght - cutLenght) + overflowBadge;
 
     let ellipsisParagraph = document.createElement('p');
     ellipsisParagraph.innerText = string
     ellipsisParagraph.setAttribute('class', cls);
-    wrap.append(ellipsisParagraph)
+    ellipsisParagraph.setAttribute('ariaHidden', true)
+    node.style.cssText = visibilityHidden
+    node.after(ellipsisParagraph)
   }
 
   // resizeObserver(node)
   // console.log(node.clientHeight)
-  let ro = new ResizeObserver(() => calc())
+  let ro = new ResizeObserver(() => measureSize())
 
-  ro.observe(wrap);
+  ro.observe(node);
 
   return {
     destroy() {

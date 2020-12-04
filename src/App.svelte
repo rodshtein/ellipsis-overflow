@@ -17,7 +17,8 @@
 
 <style>
 	.group {
-		display: flex;
+		display: grid;
+		grid-template-columns: 1fr 1fr;
 	}
 	.section {
 		max-height: 243px;
