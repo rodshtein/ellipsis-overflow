@@ -9,8 +9,6 @@ const visibilityHidden = `
   pointer-events:none;`
 
 const fillStyle = `
-  content: '';
-  display: block;
   position: absolute;
   top: 0;
   right: 0;
@@ -23,49 +21,35 @@ export function ellipsis(node, {
 }={} ) {
   let firstInit = true;
 
-  let cls = node.getAttribute('class');
-  let textHeight = node.clientHeight;
-  let textIndents = () => {
-    let margin = 'margin:' + getComputedStyle(node).margin + ';';
-    let padding = 'padding' + getComputedStyle(node).padding + ';';
-    return margin + padding;
-  }
-
-  // tester node
-  let tester = document.createElement('span');
+  let text = node.innerText;
+  let paragraphHeight = node.clientHeight;
+  let paragraphMargins = 'margin:' + getComputedStyle(node).margin + ';';
   let viewportWidth;
   let viewportHeight;
+
+  // create and set tester node
+  let tester = document.createElement('span');
+  node.append(tester)
+  node.style.position = 'unset';
+  node.parentNode.style.position = 'relative';
 
   // Make Shadow
   let shadowParagraph = node.cloneNode(true);
   document.body.append(shadowParagraph)
-  shadowParagraph.innerText = node.innerText
+  shadowParagraph.innerText = text
 
   // Height tester
   function measureSize() {
-    node.append(tester)
-    tester.style.cssText = fillStyle + textIndents()
-
+    tester.style.cssText = fillStyle + paragraphMargins
     viewportWidth = tester.clientWidth
     viewportHeight = tester.clientHeight
-
-
     shadowParagraph.style.width = viewportWidth + 'px'
-
     calc()
   }
 
-
-  // define styles
-  node.style.position = 'unset';
-  node.parentNode.style.position = 'relative';
-
-
   function calc(){
-
-    let overflowRatio = viewportHeight / ( textHeight / 100);
-
-    if(shadowParagraph.clientHeight <= viewportHeight){
+    let overflowRatio = viewportHeight / ( paragraphHeight / 100);
+    if(shadowParagraph.clientHeight <= viewportHeight && firstInit ){
       // revert
       // event
     } else {
@@ -102,21 +86,35 @@ export function ellipsis(node, {
   }
 
   function addShortText(lenght){
+    console.log('add')
     let string = node.innerText.substr(0, lenght - cutLenght) + overflowBadge;
-
-    let ellipsisParagraph = document.createElement('p');
-    ellipsisParagraph.innerText = string
-    ellipsisParagraph.setAttribute('class', cls);
-    ellipsisParagraph.setAttribute('ariaHidden', true)
-    node.style.cssText = visibilityHidden
-    node.after(ellipsisParagraph)
+    node.innerText = string
+    firstInit = false;
   }
 
-  // resizeObserver(node)
-  // console.log(node.clientHeight)
-  let ro = new ResizeObserver(() => measureSize())
+  measureSize()
 
-  ro.observe(node);
+  // resizeObserver(node)
+  let isThrottle = false;
+  let queue = false;
+
+  let ro = new ResizeObserver(() => {
+    if (!isThrottle){
+      measureSize()
+      console.log('throttle')
+      isThrottle = true
+      queue = false
+      setTimeout(()=>{
+        if (queue) measureSize()
+      }, 300)
+    } else {
+      console.log('queue')
+      queue = true
+    }
+  })
+
+
+  // ro.observe(node);
 
   return {
     destroy() {
@@ -126,6 +124,40 @@ export function ellipsis(node, {
 }
 
 
+function throttle(func, ms) {
+
+  let isThrottled = false,
+    savedArgs,
+    savedThis;
+
+  function wrapper() {
+
+    if (isThrottled) {
+      // запоминаем последние аргументы для вызова после задержки
+      savedArgs = arguments;
+      savedThis = this;
+      return;
+    }
+
+    // в противном случае переходим в состояние задержки
+    func.apply(this, arguments);
+
+    isThrottled = true;
+
+    // настройка сброса isThrottled после задержки
+    setTimeout(function() {
+      isThrottled = false;
+      if (savedArgs) {
+        // если были вызовы, savedThis/savedArgs хранят последний из них
+        // рекурсивный вызов запускает функцию и снова устанавливает время задержки
+        wrapper.apply(savedThis, savedArgs);
+        savedArgs = savedThis = null;
+      }
+    }, ms);
+  }
+
+  return wrapper;
+}
 
 function resizeObserver(node, handler){
   let frame = document.createElement('iframe');
@@ -152,4 +184,3 @@ function resizeObserver(node, handler){
     // 		handler.call(node.parentNode)
   };
 }
-
