@@ -46,7 +46,7 @@ export function ellipsis(node, {
 
   // Height tester
   function measureSize() {
-    text = node.innerHTML
+    text = node.textContent
     ellipsisParagraph.append(sizeHolder)
     sizeHolder.style.cssText = fillStyle + getParagraphMargins()
     viewportWidth = sizeHolder.clientWidth
@@ -119,8 +119,15 @@ export function ellipsis(node, {
     }
   })
 
+  let mo = new MutationObserver(measureSize)
+
   // measureSize()
-  ro.observe(node);
+  ro.observe(ellipsisParagraph);
+  mo.observe(node, {
+    attributes: true,
+    characterData: true,
+    subtree: true,
+  });
 
   return {
     destroy() {
