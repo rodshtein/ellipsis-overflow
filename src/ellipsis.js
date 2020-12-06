@@ -2,7 +2,6 @@ const visibilityHidden = `
   position:absolute;
   left:0;
   top:-100%;
-  margin:1px 0 0;
   border:none;
   opacity:0;
   visibility:hidden;
@@ -16,83 +15,87 @@ const fillStyle = `
   left: 0;`
 
 export function ellipsis(node, {
-  cutLenght = 0,
+  cutLength = 0,
   overflowBadge = '…'
 }={} ) {
+  let text = '';
   let firstInit = true;
-
-  let text = node.innerText;
-  let paragraphHeight = node.clientHeight;
-  let paragraphMargins = 'margin:' + getComputedStyle(node).margin + ';';
   let viewportWidth;
   let viewportHeight;
-
-  // create and set tester node
-  let tester = document.createElement('span');
-  node.append(tester)
-  node.style.position = 'unset';
-  node.parentNode.style.position = 'relative';
 
   // Make Shadow
   let shadowParagraph = node.cloneNode(true);
   document.body.append(shadowParagraph)
-  shadowParagraph.innerText = text
+
+  function getParagraphMargins(){
+    let margin = 'margin:' + getComputedStyle(node).margin + ';';
+    let padding = 'padding' + getComputedStyle(node).padding + ';';
+    return margin + padding;
+  }
+
+  // create new paragraph
+  let ellipsisParagraph = node.cloneNode(true);
+  ellipsisParagraph.setAttribute('ariaHidden', true)
+  ellipsisParagraph.style.position = 'unset';
+  node.before(ellipsisParagraph)
+  node.parentNode.style.position = 'relative';
+  node.style.cssText = visibilityHidden
+
+  // create and set tester node
+  let sizeHolder = document.createElement('span');
 
   // Height tester
   function measureSize() {
-    tester.style.cssText = fillStyle + paragraphMargins
-    viewportWidth = tester.clientWidth
-    viewportHeight = tester.clientHeight
+    text = node.innerHTML
+    ellipsisParagraph.append(sizeHolder)
+    sizeHolder.style.cssText = fillStyle + getParagraphMargins()
+    viewportWidth = sizeHolder.clientWidth
+    viewportHeight = sizeHolder.clientHeight
     shadowParagraph.style.width = viewportWidth + 'px'
     calc()
   }
 
   function calc(){
-    let overflowRatio = viewportHeight / ( paragraphHeight / 100);
+    let overflowRatio = viewportHeight / ( node.clientHeight / 100);
+    shadowParagraph.innerText = text
     if(shadowParagraph.clientHeight <= viewportHeight && firstInit ){
+      firstInit = false
       // revert
       // event
     } else {
-      let sliceLenght = Math.round(node.innerText.length / 100 * overflowRatio);
-
-      sliceString(sliceLenght)
+      sliceString(Math.round(text.length / 100 * overflowRatio))
     }
   }
 
-  function sliceString(lenght, prevOverflow) {
-    let string = node.innerText.substr(0, lenght) + overflowBadge;
+  function sliceString(length, prevOverflow) {
+    let string = text.substr(0, length) + overflowBadge;
     let textHeight;
 
     shadowParagraph.innerText = string
     textHeight = shadowParagraph.clientHeight
 
-    // for strin decrease
+    // for string decrease
     if( textHeight > viewportHeight ){
       if( prevOverflow == false ){
-        addShortText(--lenght)
+        addShortText(--length)
       } else {
-        sliceString(--lenght, true)
+        sliceString(--length, true)
       }
     }
 
     // for string increase
     if( textHeight <= viewportHeight ){
       if( prevOverflow == true ) {
-        addShortText(lenght)
+        addShortText(length)
       } else {
-        sliceString(++lenght, false)
+        sliceString(++length, false)
       }
     }
   }
 
-  function addShortText(lenght){
-    console.log('add')
-    let string = node.innerText.substr(0, lenght - cutLenght) + overflowBadge;
-    node.innerText = string
-    firstInit = false;
+  function addShortText(length){
+    ellipsisParagraph.innerText = text.substr(0, length - cutLength) + overflowBadge;
   }
-
-  measureSize()
 
   // resizeObserver(node)
   let isThrottle = false;
@@ -101,20 +104,23 @@ export function ellipsis(node, {
   let ro = new ResizeObserver(() => {
     if (!isThrottle){
       measureSize()
-      console.log('throttle')
       isThrottle = true
-      queue = false
+
       setTimeout(()=>{
-        if (queue) measureSize()
+        if (queue) {
+          measureSize()
+          console.log('ЗАЕБАЛА!!!')
+          queue = false
+        }
+        isThrottle = false
       }, 300)
     } else {
-      console.log('queue')
       queue = true
     }
   })
 
-
-  // ro.observe(node);
+  // measureSize()
+  ro.observe(node);
 
   return {
     destroy() {
