@@ -94,7 +94,7 @@ export function ellipsis(node, {
   }
 
   function addShortText(length){
-    ellipsisParagraph.innerText = text.substr(0, length - cutLength) + overflowBadge;
+    ellipsisParagraph.textContent = text.substr(0, length - cutLength) + overflowBadge;
   }
 
   // resizeObserver(node)
