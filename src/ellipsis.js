@@ -30,7 +30,7 @@ export function ellipsis(node, {
   let resizeObserver = new ResizeObserver(resizeReCalc)
   let mutationObserver = new MutationObserver(mutationReCalc)
 
-  // init node container
+  // init hidden nodes container
   let nodesContainer = window.__ellipsisNodeContainer;
   if(!nodesContainer){
     nodesContainer = document.createElement('div')
@@ -40,6 +40,13 @@ export function ellipsis(node, {
     document.body.append(nodesContainer)
     window.__ellipsisNodeContainer = nodesContainer
   }
+
+  // First init stack
+  cloneNode()
+  setSizeRuler()
+  setParagraphRuler()
+  calc()
+
 
   // Create ellipsis paragraph
   function cloneNode(){
@@ -56,7 +63,6 @@ export function ellipsis(node, {
       nodesContainer.append(node)
     }
   }
-  cloneNode()
 
 
   // Set Size Ruler
@@ -64,7 +70,7 @@ export function ellipsis(node, {
     sizeRuler.style.cssText = fillStyle + getParagraphMargins(node)
     clone.append(sizeRuler)
   }
-  setSizeRuler()
+
 
   // Set height calc paragraph
   function setParagraphRuler(){
@@ -72,7 +78,6 @@ export function ellipsis(node, {
     paragraphRuler = node.cloneNode(true);
     nodesContainer.append(paragraphRuler)
   }
-  setParagraphRuler()
 
 
   // Calc init
@@ -90,9 +95,9 @@ export function ellipsis(node, {
       sliceString(Math.round(clone.textContent.length / 100 * ratio))
     }
   }
-  calc()
 
 
+  // Recursive calc function
   function sliceString(length, isOverflow, currCycle = false) {
     currCycle = currCycle ? currCycle : ++sliceCycle;
 
@@ -124,12 +129,14 @@ export function ellipsis(node, {
     }
   }
 
+  // Finish painter
   function addShortText(length){
     clone.textContent = node.textContent.substr(0, length - cutLength) + overflowBadge;
     setSizeRuler()
     setResizeObserver(sizeRuler)
   }
 
+  // Mutation recalc stack
   function mutationReCalc(){
     cloneNode()
     setSizeRuler()
@@ -137,7 +144,7 @@ export function ellipsis(node, {
     calc()
   }
 
-
+  // Observer init wrapper for prevent blank run stack scripts
   function setResizeObserver(target){
     resizeObserverBlankRun = true;
     resizeObserver.observe(target);
@@ -151,7 +158,7 @@ export function ellipsis(node, {
     if(resizeObserverBlankRun){
       resizeObserverBlankRun = false;
     } else {
-      if (resizeDebounce == false){
+      if (!resizeDebounce){
         resizeDebounce = true
         setTimeout(()=>{
           calc()
@@ -172,6 +179,7 @@ export function ellipsis(node, {
     destroy() { }
   };
 }
+
 
 function getParagraphMargins(paragraph){
   let margin = 'margin:' + getComputedStyle(paragraph).margin + ';';
