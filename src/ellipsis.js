@@ -30,7 +30,7 @@ export function ellipsis(node, {
   let resizeObserver = new ResizeObserver(resizeReCalc)
   let mutationObserver = new MutationObserver(mutationReCalc)
 
-  // init node container
+  // init hidden nodes container
   let nodesContainer = window.__ellipsisNodeContainer;
   if(!nodesContainer){
     nodesContainer = document.createElement('div')
