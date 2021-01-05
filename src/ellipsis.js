@@ -31,14 +31,14 @@ export function ellipsis(node, {
   let mutationObserver = new MutationObserver(mutationReCalc)
 
   // init hidden nodes container
-  let nodesContainer = window.__ellipsisNodeContainer;
+  let nodesContainer = window.__ellipsisNodesContainer;
   if(!nodesContainer){
     nodesContainer = document.createElement('div')
     nodesContainer.setAttribute('ariaHidden', true)
-    nodesContainer.setAttribute('id', 'ellipsisNodeContainer')
+    nodesContainer.setAttribute('id', 'ellipsisNodesContainer')
     nodesContainer.style.cssText = visibilityHidden
     document.body.append(nodesContainer)
-    window.__ellipsisNodeContainer = nodesContainer
+    window.__ellipsisNodesContainer = nodesContainer
   }
 
   // First init stack
