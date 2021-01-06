@@ -23,12 +23,12 @@ export function ellipsis(node, {
   let sliceCycle = 0;
   let resizeObserverBlankRun = true;
 
-  // Prepare parent node
-  node.parentNode.style.position = 'relative';
-
   // Observers
   let resizeObserver = new ResizeObserver(resizeReCalc)
   let mutationObserver = new MutationObserver(mutationReCalc)
+
+  // Events
+  let event = (data) => new CustomEvent( "update", { detail: data });
 
   // init hidden nodes container
   let nodesContainer = window.__ellipsisNodesContainer;
@@ -43,9 +43,8 @@ export function ellipsis(node, {
 
   // First init stack
   cloneNode()
-  setSizeRuler()
   setParagraphRuler()
-  calc()
+  if(oneLineCheck()) calc()
 
 
   // Create ellipsis paragraph
@@ -75,24 +74,46 @@ export function ellipsis(node, {
   // Set height calc paragraph
   function setParagraphRuler(){
     if(typeof paragraphRuler == 'object') paragraphRuler.remove()
-    paragraphRuler = node.cloneNode(true);
+    paragraphRuler = node.cloneNode(true)
     nodesContainer.append(paragraphRuler)
   }
 
+  // Check for is only one line
+  function oneLineCheck(){
+    let spaceStyle = paragraphRuler.style.whiteSpace;
+    paragraphRuler.style.whiteSpace = 'pre-line'
+    paragraphRuler.textContent = `1\n2`
+
+    if(paragraphRuler.clientHeight > clone.clientHeight){
+      node.dispatchEvent(event({type: "overflow", status: false}));
+      return false
+    } else {
+      node.dispatchEvent(event({type: "overflow", status: true}));
+      paragraphRuler.style.whiteSpace = spaceStyle
+      return true
+    }
+  }
 
   // Calc init
   function calc(){
+    // Set clone width to 100% for measure all available space
+    // before that remember inline styles
+    let cloneStyleWidth = clone.style.width;
+    clone.style.width = '100%'
     // We subtract one pixel because chrome
     // always round client* sizes upwards
     // but for paragraph height calc it use real sizes
-    paragraphRuler.style.width = sizeRuler.clientWidth - 1 + 'px'
+    paragraphRuler.style.width = clone.clientWidth - 1 + 'px'
+    // restore styles
+    clone.style.width = cloneStyleWidth
+
 
     // We always reset text to measure the height difference
     paragraphRuler.textContent = node.textContent
 
-    if(sizeRuler.clientHeight < paragraphRuler.clientHeight) {
-      let ratio = sizeRuler.clientHeight / ( clone.clientHeight / 100);
-      sliceString(Math.round(clone.textContent.length / 100 * ratio))
+    if(clone.clientHeight < clone.scrollHeight) {
+      let ratio = clone.clientHeight / ( clone.scrollHeight / 100);
+      sliceString(Math.round(node.textContent.length / 100 * ratio))
     }
   }
 
@@ -106,12 +127,13 @@ export function ellipsis(node, {
 
     // kill slicer if we have new cycle
     if(currCycle != sliceCycle)  return
+    console.log(currCycle)
 
     paragraphRuler.textContent = string
     textHeight = paragraphRuler.clientHeight
 
     // for string decrease
-    if( textHeight > sizeRuler.clientHeight ){
+    if( textHeight > clone.clientHeight ){
       if( isOverflow == false ){
         addShortText(--length)
       } else {
@@ -120,7 +142,7 @@ export function ellipsis(node, {
     }
 
     // for string increase
-    if( textHeight <= sizeRuler.clientHeight ){
+    if( textHeight <= clone.clientHeight ){
       if( isOverflow == true ) {
         addShortText(length)
       } else {
@@ -132,14 +154,12 @@ export function ellipsis(node, {
   // Finish painter
   function addShortText(length){
     clone.textContent = node.textContent.substr(0, length - cutLength) + overflowBadge;
-    setSizeRuler()
-    setResizeObserver(sizeRuler)
+    setResizeObserver(clone)
   }
 
-  // Mutation recalc stack
+  // Mutation re calc stack
   function mutationReCalc(){
     cloneNode()
-    setSizeRuler()
     setParagraphRuler()
     calc()
   }
