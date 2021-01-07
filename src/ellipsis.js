@@ -80,6 +80,8 @@ export function ellipsis(node, {
 
   // Check for is only one line
   function oneLineCheck(){
+    // We need to set pre-line whitespace for make two line paragraph
+    // Before that let's store inline whitespace style
     let spaceStyle = paragraphRuler.style.whiteSpace;
     paragraphRuler.style.whiteSpace = 'pre-line'
     paragraphRuler.textContent = `1\n2`
@@ -89,6 +91,7 @@ export function ellipsis(node, {
       return false
     } else {
       node.dispatchEvent(event({type: "overflow", status: true}));
+      // Reset inline style back
       paragraphRuler.style.whiteSpace = spaceStyle
       return true
     }
