@@ -12,8 +12,8 @@
 
 	function handler(){
 		paintedText = state == 1 ? txt2 : txt1;
-		nodeEl.style.fontWeight = state == 1 ? '800' : '400';
-		nodeEl.style.fontSize = state == 1 ? '36px' : '28px';
+		// nodeEl.style.fontWeight = state == 1 ? '800' : '400';
+		// nodeEl.style.fontSize = state == 1 ? '36px' : '28px';
 		state = state == 1 ? 2 : 1;
 	}
 
@@ -30,7 +30,11 @@
 <div class='card' on:click = {handler}>
 	<h2> { header } </h2>
 
-		<p  use:ellipsis bind:this='{nodeEl}'on:update='{eventHandler}' >
+		<p
+			use:ellipsis={{ overflowBadge:' ' }}
+			bind:this={nodeEl}
+			on:update={eventHandler}
+		>
 			{ paintedText }
 		</p>
 
@@ -52,8 +56,11 @@
 		padding: 30px 15px 50px;
 	}
 
+	.card {
+	 background-color: rgb(245, 245, 233);
+	}
+
 	p {
 		overflow: hidden;
-		font-size: 18px;
 	}
 </style>
