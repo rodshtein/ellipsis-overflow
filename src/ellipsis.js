@@ -7,19 +7,11 @@ const visibilityHidden = `
   visibility:hidden;
   pointer-events:none;`
 
-const fillStyle = `
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;`
-
 export function ellipsis(node, {
   cutLength = 0,
   overflowBadge = '…'
 }={} ) {
   let paragraphRuler, clone;
-  let sizeRuler = document.createElement('span');
   let sliceCycle = 0;
   let resizeObserverBlankRun = true;
 
@@ -64,13 +56,6 @@ export function ellipsis(node, {
   }
 
 
-  // Set Size Ruler
-  function setSizeRuler(){
-    sizeRuler.style.cssText = fillStyle + getParagraphMargins(node)
-    clone.append(sizeRuler)
-  }
-
-
   // Set height calc paragraph
   function setParagraphRuler(){
     if(typeof paragraphRuler == 'object') paragraphRuler.remove()
@@ -85,6 +70,9 @@ export function ellipsis(node, {
     let spaceStyle = paragraphRuler.style.whiteSpace;
     paragraphRuler.style.whiteSpace = 'pre-line'
     paragraphRuler.textContent = `1\n2`
+
+    console.log(paragraphRuler.clientHeight)
+    console.log(clone.clientHeight)
 
     if(paragraphRuler.clientHeight > clone.clientHeight){
       node.dispatchEvent(event({type: "overflow", status: false}));
@@ -130,7 +118,7 @@ export function ellipsis(node, {
 
     // kill slicer if we have new cycle
     if(currCycle != sliceCycle)  return
-    console.log(currCycle)
+    // console.log(currCycle)
 
     paragraphRuler.textContent = string
     textHeight = paragraphRuler.clientHeight
@@ -140,6 +128,7 @@ export function ellipsis(node, {
       if( isOverflow == false ){
         addShortText(--length)
       } else {
+        // setTimeout(()=>sliceString(--length, true, currCycle), 30)
         sliceString(--length, true, currCycle)
       }
     }
@@ -149,6 +138,7 @@ export function ellipsis(node, {
       if( isOverflow == true ) {
         addShortText(length)
       } else {
+        // setTimeout(()=>sliceString(++length, false, currCycle), 30)
         sliceString(++length, false, currCycle)
       }
     }
@@ -157,24 +147,35 @@ export function ellipsis(node, {
   // Finish painter
   function addShortText(length){
     clone.textContent = node.textContent.substr(0, length - cutLength) + overflowBadge;
-    setResizeObserver(clone)
+    setResizeObserver()
   }
 
   // Mutation re calc stack
+  let mutationDebounce = false;
   function mutationReCalc(){
-    cloneNode()
-    setParagraphRuler()
-    calc()
+    if (!mutationDebounce){
+      mutationDebounce = true
+      setTimeout(()=>{
+        // By any mutation we replace old clone
+        // and ruler as it easy way to set right styles and sizes
+        // Before that remove resize observer because it can make cycle
+        resizeObserver.disconnect()
+        cloneNode()
+        setParagraphRuler()
+        if(oneLineCheck()) calc()
+        mutationDebounce = false
+      }, 300)
+    }
   }
 
   // Observer init wrapper for prevent blank run stack scripts
-  function setResizeObserver(target){
-    resizeObserverBlankRun = true;
-    resizeObserver.observe(target);
+  function setResizeObserver(){
+    resizeObserverBlankRun = true
+    resizeObserver.observe(clone)
   }
 
 
-  // Resize Observer
+  // Resize Observer Function
   let resizeDebounce = false;
   function resizeReCalc(){
     // Prevent blank run that initiated by an observer
@@ -184,6 +185,10 @@ export function ellipsis(node, {
       if (!resizeDebounce){
         resizeDebounce = true
         setTimeout(()=>{
+          // Always set max content for expand paragraph to max size
+          // Before that remove resize observer because it can make cycle
+          resizeObserver.disconnect()
+          clone.textContent = node.textContent
           calc()
           resizeDebounce = false
         }, 300)
@@ -191,7 +196,7 @@ export function ellipsis(node, {
     }
   }
 
-
+  // Set Mutation Observer
   mutationObserver.observe(node, {
     attributes: true,
     characterData: true,
