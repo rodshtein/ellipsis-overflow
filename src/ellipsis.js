@@ -28,15 +28,27 @@ export function ellipsis(node, {
     nodesContainer = document.createElement('div')
     nodesContainer.setAttribute('ariaHidden', true)
     nodesContainer.setAttribute('id', 'ellipsisNodesContainer')
-    nodesContainer.style.cssText = visibilityHidden
+    // nodesContainer.style.cssText = visibilityHidden
     document.body.append(nodesContainer)
     window.__ellipsisNodesContainer = nodesContainer
   }
 
   // First init stack
-  cloneNode()
-  setParagraphRuler()
-  if(oneLineCheck()) calc()
+  init()
+
+  // Main stack runner
+  function init(){
+    if(checkOverflow()){
+      console.log('launched')
+      cloneNode()
+      setParagraphRuler()
+      runCalc()
+    } else {
+      console.log('waiting for overflow')
+      setResizeObserver()
+      setMutationObserver()
+    }
+  }
 
 
   // Create ellipsis paragraph
@@ -45,13 +57,16 @@ export function ellipsis(node, {
     _clone.style.position = 'unset';
 
     if(typeof clone == 'object') {
+      console.log('replace clone')
       clone.before(_clone)
       clone.remove();
       clone = _clone;
     } else {
+      console.log('clone node')
       clone = _clone;
       node.before(clone)
       nodesContainer.append(node)
+      setMutationObserver()
     }
   }
 
@@ -63,16 +78,14 @@ export function ellipsis(node, {
     nodesContainer.append(paragraphRuler)
   }
 
+
   // Check for is only one line
-  function oneLineCheck(){
+  function OLD_oneLineCheck(){
     // We need to set pre-line whitespace for make two line paragraph
     // Before that let's store inline whitespace style
     let spaceStyle = paragraphRuler.style.whiteSpace;
     paragraphRuler.style.whiteSpace = 'pre-line'
     paragraphRuler.textContent = `1\n2`
-
-    console.log(paragraphRuler.clientHeight)
-    console.log(clone.clientHeight)
 
     if(paragraphRuler.clientHeight > clone.clientHeight){
       node.dispatchEvent(event({type: "overflow", status: false}));
@@ -85,26 +98,48 @@ export function ellipsis(node, {
     }
   }
 
+
+  function checkOverflow() {
+    console.log("checkOverflow")
+    let target;
+
+    if(typeof clone == 'object') {
+      target = clone
+      clone.textContent = node.textContent
+    } else {
+      target = node
+    }
+
+    return target.clientHeight < target.scrollHeight
+  }
+
+  function checkSafeLineHeight(){
+    // Set tester text and store size
+    paragraphRuler.textContent = `Lg`
+    return clone.clientHeight >= paragraphRuler.clientHeight
+  }
+
+
   // Calc init
-  function calc(){
-    // Set clone width to 100% for measure all available space
-    // before that remember inline styles
-    let cloneStyleWidth = clone.style.width;
-    clone.style.width = '100%'
-    // We subtract one pixel because chrome
-    // always round client* sizes upwards
-    // but for paragraph height calc it use real sizes
-    paragraphRuler.style.width = clone.clientWidth - 1 + 'px'
-    // restore styles
-    clone.style.width = cloneStyleWidth
-
-
-    // We always reset text to measure the height difference
-    paragraphRuler.textContent = node.textContent
-
-    if(clone.clientHeight < clone.scrollHeight) {
+  function runCalc(){
+    console.log('runCalc')
+    if(checkSafeLineHeight()) {
       let ratio = clone.clientHeight / ( clone.scrollHeight / 100);
+
+      // Set clone width to 100% for measure all available space
+      // before that remember inline styles
+      let cloneStyleWidth = clone.style.width;
+      clone.style.width = '100%'
+      // We subtract one pixel because chrome
+      // always round client* sizes upwards
+      // but for paragraph height calc it use real sizes
+      paragraphRuler.style.width = clone.clientWidth - 1 + 'px'
+      // restore styles
+      clone.style.width = cloneStyleWidth
+
       sliceString(Math.round(node.textContent.length / 100 * ratio))
+    } else {
+      setResizeObserver()
     }
   }
 
@@ -144,11 +179,30 @@ export function ellipsis(node, {
     }
   }
 
+
   // Finish painter
   function addShortText(length){
     clone.textContent = node.textContent.substr(0, length - cutLength) + overflowBadge;
     setResizeObserver()
   }
+
+
+  // Set Mutation Observer
+  function setMutationObserver(){
+    mutationObserver.observe(node, {
+      attributes: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
+
+
+  // Observer init wrapper for prevent blank run stack scripts
+  function setResizeObserver(){
+    resizeObserverBlankRun = true
+    resizeObserver.observe(typeof clone == 'object' ? clone : node)
+  }
+
 
   // Mutation re calc stack
   let mutationDebounce = false;
@@ -156,22 +210,20 @@ export function ellipsis(node, {
     if (!mutationDebounce){
       mutationDebounce = true
       setTimeout(()=>{
+        console.log('mutationReCalc')
+        // We don't check launched like in resizeObserver
+        // because anyway run init (one strategy)
+
         // By any mutation we replace old clone
         // and ruler as it easy way to set right styles and sizes
-        // Before that remove resize observer because it can make cycle
+        // Before that remove resize & mutation observers
+        // because it can make cycle
         resizeObserver.disconnect()
-        cloneNode()
-        setParagraphRuler()
-        if(oneLineCheck()) calc()
+        // mutationObserver.disconnect()
+        init()
         mutationDebounce = false
       }, 300)
     }
-  }
-
-  // Observer init wrapper for prevent blank run stack scripts
-  function setResizeObserver(){
-    resizeObserverBlankRun = true
-    resizeObserver.observe(clone)
   }
 
 
@@ -185,32 +237,35 @@ export function ellipsis(node, {
       if (!resizeDebounce){
         resizeDebounce = true
         setTimeout(()=>{
-          // Always set max content for expand paragraph to max size
-          // Before that remove resize observer because it can make cycle
-          resizeObserver.disconnect()
-          clone.textContent = node.textContent
-          calc()
+          // We start script all only if text node have overflow
+          // We have two strategies based on is it launched or not
+          // Check for launched
+          if(typeof clone == 'object'){
+            // Always set max content for expand paragraph to max size
+            // Before that remove resize observer because it can make cycle
+            resizeObserver.disconnect()
+            if(checkOverflow()) {
+              runCalc()
+            } else {
+              // If it has no overflow set observer back
+              setResizeObserver()
+            }
+          } else {
+            init()
+          }
           resizeDebounce = false
         }, 300)
       }
     }
   }
 
-  // Set Mutation Observer
-  mutationObserver.observe(node, {
-    attributes: true,
-    characterData: true,
-    subtree: true,
-  });
+
 
   return {
-    destroy() { }
+    destroy() {
+      resizeObserver.disconnect()
+      mutationObserver.disconnect()
+      //TODO need to clean up nodes container, clones, and rulers
+     }
   };
-}
-
-
-function getParagraphMargins(paragraph){
-  let margin = 'margin:' + getComputedStyle(paragraph).margin + ';';
-  let padding = 'padding' + getComputedStyle(paragraph).padding + ';';
-  return margin + padding;
 }
