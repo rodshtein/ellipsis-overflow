@@ -1,3 +1,4 @@
+import { tick } from 'svelte';
 const visibilityHidden = `
   position:absolute;
   left:0;
@@ -9,11 +10,16 @@ const visibilityHidden = `
 
 export function ellipsis(node, {
   cutLength = 0,
-  overflowBadge = '…'
+  overflowBadge = '…',
+  affectNode = null
 }={} ) {
   let paragraphRuler, clone;
   let sliceCycle = 0;
   let resizeObserverBlankRun = true;
+
+  // Store initial affect node style
+  let affectNodeStyle = affectNode ? affectNode.style.display : null;
+  let affectNodeIsHidden = false;
 
   // Observers
   let resizeObserver = new ResizeObserver(resizeReCalc)
@@ -24,30 +30,38 @@ export function ellipsis(node, {
 
   // init hidden nodes container
   let nodesContainer = window.__ellipsisNodesContainer;
-  if(!nodesContainer){
-    nodesContainer = document.createElement('div')
-    nodesContainer.setAttribute('ariaHidden', true)
-    nodesContainer.setAttribute('id', 'ellipsisNodesContainer')
-    // nodesContainer.style.cssText = visibilityHidden
-    document.body.append(nodesContainer)
-    window.__ellipsisNodesContainer = nodesContainer
+
+  function createHiddenContainer(){
+    if(!nodesContainer){
+      nodesContainer = document.createElement('div')
+      nodesContainer.setAttribute('ariaHidden', true)
+      nodesContainer.setAttribute('id', 'ellipsisNodesContainer')
+      // nodesContainer.style.cssText = visibilityHidden
+      document.body.append(nodesContainer)
+      window.__ellipsisNodesContainer = nodesContainer
+    }
   }
 
   // First init stack
   init()
 
+
   // Main stack runner
-  function init(){
-    if(checkOverflow()){
-      console.log('launched')
-      cloneNode()
-      setParagraphRuler()
-      runCalc()
-    } else {
-      console.log('waiting for overflow')
-      setResizeObserver()
-      setMutationObserver()
-    }
+  async function init(){
+    let overflow = checkOverflow();
+    overflow.then((state) => {
+      if(state){
+        console.log('launched')
+        createHiddenContainer()
+        cloneNode()
+        setParagraphRuler()
+        runCalc()
+      } else {
+        console.log('waiting for overflow')
+        setResizeObserver()
+        setMutationObserver()
+      }
+    })
   }
 
 
@@ -79,28 +93,13 @@ export function ellipsis(node, {
   }
 
 
-  // Check for is only one line
-  function OLD_oneLineCheck(){
-    // We need to set pre-line whitespace for make two line paragraph
-    // Before that let's store inline whitespace style
-    let spaceStyle = paragraphRuler.style.whiteSpace;
-    paragraphRuler.style.whiteSpace = 'pre-line'
-    paragraphRuler.textContent = `1\n2`
-
-    if(paragraphRuler.clientHeight > clone.clientHeight){
-      node.dispatchEvent(event({type: "overflow", status: false}));
-      return false
-    } else {
-      node.dispatchEvent(event({type: "overflow", status: true}));
-      // Reset inline style back
-      paragraphRuler.style.whiteSpace = spaceStyle
-      return true
-    }
+  async function dispatchEvent(type, status){
+    await tick();
+    node.dispatchEvent(event({type, status}));
   }
 
-
-  function checkOverflow() {
-    console.log("checkOverflow")
+  async function checkOverflow() {
+    console.log('overflow check')
     let target;
 
     if(typeof clone == 'object') {
@@ -110,9 +109,40 @@ export function ellipsis(node, {
       target = node
     }
 
-    return target.clientHeight < target.scrollHeight
+    if( target.clientHeight < target.scrollHeight ) {
+      console.log('overflow true')
+      // If is overflow we try to remove affected node
+
+      if( affectNode ) {
+        affectNode.style.display = 'none'
+        if( target.clientHeight < target.scrollHeight ) {
+          // After check we always set affect Node visible back
+          affectNode.style.display = affectNodeStyle
+          console.log('overflow true 1')
+          dispatchEvent( 'overflow', true );
+          return true
+        } else {
+          // After check we always set affect Node visible back
+          affectNodeIsHidden = true;
+          console.log('affected')
+          dispatchEvent( 'affected', true );
+          return false
+        }
+      } else {
+        console.log('overflow true 2')
+        dispatchEvent( 'overflow', true );
+        return true
+      }
+
+    } else {
+      console.log('overflow false')
+      dispatchEvent( 'overflow', false );
+      return false
+    }
   }
 
+
+  // Check that we have enough space for one line
   function checkSafeLineHeight(){
     // Set tester text and store size
     paragraphRuler.textContent = `Lg`
@@ -123,6 +153,7 @@ export function ellipsis(node, {
   // Calc init
   function runCalc(){
     console.log('runCalc')
+    // If we have enough space for one line
     if(checkSafeLineHeight()) {
       let ratio = clone.clientHeight / ( clone.scrollHeight / 100);
 
@@ -153,7 +184,7 @@ export function ellipsis(node, {
 
     // kill slicer if we have new cycle
     if(currCycle != sliceCycle)  return
-    // console.log(currCycle)
+    console.log(currCycle)
 
     paragraphRuler.textContent = string
     textHeight = paragraphRuler.clientHeight
@@ -163,8 +194,8 @@ export function ellipsis(node, {
       if( isOverflow == false ){
         addShortText(--length)
       } else {
-        // setTimeout(()=>sliceString(--length, true, currCycle), 30)
-        sliceString(--length, true, currCycle)
+        setTimeout(()=>sliceString(--length, true, currCycle), 30)
+        // sliceString(--length, true, currCycle)
       }
     }
 
@@ -173,8 +204,8 @@ export function ellipsis(node, {
       if( isOverflow == true ) {
         addShortText(length)
       } else {
-        // setTimeout(()=>sliceString(++length, false, currCycle), 30)
-        sliceString(++length, false, currCycle)
+        setTimeout(()=>sliceString(++length, false, currCycle), 30)
+        // sliceString(++length, false, currCycle)
       }
     }
   }
@@ -259,13 +290,16 @@ export function ellipsis(node, {
     }
   }
 
-
-
   return {
+    update(props) {
+      if(props.affectNode) affectNode = props.affectNode
+    },
+
     destroy() {
       resizeObserver.disconnect()
       mutationObserver.disconnect()
       //TODO need to clean up nodes container, clones, and rulers
      }
+
   };
 }

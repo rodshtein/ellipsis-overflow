@@ -11,9 +11,10 @@
 	let headerNode;
 	let state = 1;
 	let headerSize = 26;
-	let textFill = 50;
+	let textFill = 3;
 	let cardHeight = 380;
 	let cardWidth = 208;
+	let affectNode;
 
 	function handler(){
 		paintedText = state == 1 ? txt2 : txt1;
@@ -22,12 +23,11 @@
 		state = state == 1 ? 2 : 1;
 	}
 
-	let overflow = true;
+	let hideBtn = false;
 
 	function eventHandler(e){
 		if(e.detail.type == "overflow") {
-			console.log(e.detail.status)
-			overflow = e.detail.status;
+			hideBtn = !e.detail.status;
 		}
 	}
 
@@ -49,7 +49,7 @@
 
 	<p
 		class='text'
-		use:ellipsis={{ string:' ' }}
+		use:ellipsis={{ overflowBadge:' ', affectNode: affectNode }}
 		bind:this={textNode}
 		on:update={eventHandler}
 	>
@@ -57,7 +57,8 @@
 	</p>
 
 	<button
-		hidden = {overflow ? false : true}
+		bind:this={affectNode}
+		style = "display:{hideBtn  ? 'none' : ''}"
 	>
 		Full article
 	</button>
