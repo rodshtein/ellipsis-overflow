@@ -51,13 +51,11 @@ export function ellipsis(node, {
     let overflow = checkOverflow();
     overflow.then((state) => {
       if(state){
-        console.log('launched')
         createHiddenContainer()
         cloneNode()
         setParagraphRuler()
         runCalc()
       } else {
-        console.log('waiting for overflow')
         setResizeObserver()
         setMutationObserver()
       }
@@ -71,12 +69,10 @@ export function ellipsis(node, {
     _clone.style.position = 'unset';
 
     if(typeof clone == 'object') {
-      console.log('replace clone')
       clone.before(_clone)
       clone.remove();
       clone = _clone;
     } else {
-      console.log('clone node')
       clone = _clone;
       node.before(clone)
       nodesContainer.append(node)
@@ -98,10 +94,22 @@ export function ellipsis(node, {
     node.dispatchEvent(event({type, status}));
   }
 
+  function affectNodeControl(action){
+    if(action == 'hide') {
+      affectNode.style.display = 'none'
+      affectNodeIsHidden = true
+    }
+
+    if(action == 'show') {
+      affectNode.style.display = affectNodeStyle
+      affectNodeIsHidden = false
+    }
+  }
+
   async function checkOverflow() {
-    console.log('overflow check')
     let target;
 
+    // If it's second launch we already have next clone
     if(typeof clone == 'object') {
       target = clone
       clone.textContent = node.textContent
@@ -109,33 +117,32 @@ export function ellipsis(node, {
       target = node
     }
 
-    if( target.clientHeight < target.scrollHeight ) {
-      console.log('overflow true')
-      // If is overflow we try to remove affected node
+    // Before check set overflow
+    if(affectNodeIsHidden) affectNodeControl('show')
 
+    if( target.clientHeight < target.scrollHeight ) {
+      // If is overflow we try to remove affected node
       if( affectNode ) {
-        affectNode.style.display = 'none'
+        affectNodeControl('hide')
         if( target.clientHeight < target.scrollHeight ) {
-          // After check we always set affect Node visible back
-          affectNode.style.display = affectNodeStyle
-          console.log('overflow true 1')
+          // If affected node hiding is no affected
+          // set is visible back
+          affectNodeControl('show')
           dispatchEvent( 'overflow', true );
           return true
         } else {
-          // After check we always set affect Node visible back
-          affectNodeIsHidden = true;
-          console.log('affected')
-          dispatchEvent( 'affected', true );
+          // If affected node hiding is affected
+          dispatchEvent( 'overflow', false );
           return false
         }
+
       } else {
-        console.log('overflow true 2')
         dispatchEvent( 'overflow', true );
         return true
       }
 
     } else {
-      console.log('overflow false')
+      // If is no overflow
       dispatchEvent( 'overflow', false );
       return false
     }
@@ -152,7 +159,6 @@ export function ellipsis(node, {
 
   // Calc init
   function runCalc(){
-    console.log('runCalc')
     // If we have enough space for one line
     if(checkSafeLineHeight()) {
       let ratio = clone.clientHeight / ( clone.scrollHeight / 100);
@@ -184,7 +190,6 @@ export function ellipsis(node, {
 
     // kill slicer if we have new cycle
     if(currCycle != sliceCycle)  return
-    console.log(currCycle)
 
     paragraphRuler.textContent = string
     textHeight = paragraphRuler.clientHeight
@@ -241,7 +246,6 @@ export function ellipsis(node, {
     if (!mutationDebounce){
       mutationDebounce = true
       setTimeout(()=>{
-        console.log('mutationReCalc')
         // We don't check launched like in resizeObserver
         // because anyway run init (one strategy)
 
