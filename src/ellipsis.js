@@ -8,10 +8,11 @@ const visibilityHidden = `
   visibility:hidden;
   pointer-events:none;`
 
-export function ellipsis(node, {
+export default function ellipsis(node, {
   cutLength = 0,
   overflowBadge = '…',
-  affectNode = null
+  affectNode = null,
+  sliceAfter = /\p{Letter}/u // only after any letter
 }={} ) {
   let paragraphRuler, clone;
   let sliceCycle = 0;
@@ -36,7 +37,7 @@ export function ellipsis(node, {
       nodesContainer = document.createElement('div')
       nodesContainer.setAttribute('ariaHidden', true)
       nodesContainer.setAttribute('id', 'ellipsisNodesContainer')
-      // nodesContainer.style.cssText = visibilityHidden
+      nodesContainer.style.cssText = visibilityHidden
       document.body.append(nodesContainer)
       window.__ellipsisNodesContainer = nodesContainer
     }
@@ -48,18 +49,15 @@ export function ellipsis(node, {
 
   // Main stack runner
   async function init(){
-    let overflow = checkOverflow();
-    overflow.then((state) => {
-      if(state){
-        createHiddenContainer()
-        cloneNode()
-        setParagraphRuler()
-        runCalc()
-      } else {
-        setResizeObserver()
-        setMutationObserver()
-      }
-    })
+    if(await checkOverflow()){
+      createHiddenContainer()
+      cloneNode()
+      setParagraphRuler()
+      runCalc()
+    } else {
+      setResizeObserver()
+      setMutationObserver()
+    }
   }
 
 
@@ -183,41 +181,41 @@ export function ellipsis(node, {
 
   // Recursive calc function
   function sliceString(length, isOverflow, currCycle = false) {
+
     currCycle = currCycle ? currCycle : ++sliceCycle;
-
-    let string = node.textContent.substr(0, length) + overflowBadge;
-    let textHeight;
-
     // kill slicer if we have new cycle
     if(currCycle != sliceCycle)  return
 
+    let string = node.textContent.substr(0, length) + overflowBadge;
     paragraphRuler.textContent = string
-    textHeight = paragraphRuler.clientHeight
 
     // for string decrease
-    if( textHeight > clone.clientHeight ){
+    if( paragraphRuler.clientHeight > clone.clientHeight ){
       if( isOverflow == false ){
         addShortText(--length)
       } else {
-        setTimeout(()=>sliceString(--length, true, currCycle), 30)
+        setTimeout(()=>sliceString(--length, true, currCycle), 20)
         // sliceString(--length, true, currCycle)
       }
     }
 
     // for string increase
-    if( textHeight <= clone.clientHeight ){
+    if( paragraphRuler.clientHeight <= clone.clientHeight ){
       if( isOverflow == true ) {
         addShortText(length)
       } else {
-        setTimeout(()=>sliceString(++length, false, currCycle), 30)
-        // sliceString(++length, false, currCycle)
+        // setTimeout(()=>sliceString(++length, false, currCycle), 20)
+        sliceString(++length, false, currCycle)
       }
     }
   }
 
 
+
   // Finish painter
   function addShortText(length){
+    // slice last symbol by pattern
+    while (!sliceAfter.test(node.textContent[length -1])) { --length }
     clone.textContent = node.textContent.substr(0, length - cutLength) + overflowBadge;
     setResizeObserver()
   }
@@ -271,7 +269,7 @@ export function ellipsis(node, {
     } else {
       if (!resizeDebounce){
         resizeDebounce = true
-        setTimeout(()=>{
+        setTimeout(async ()=>{
           // We start script all only if text node have overflow
           // We have two strategies based on is it launched or not
           // Check for launched
@@ -279,7 +277,8 @@ export function ellipsis(node, {
             // Always set max content for expand paragraph to max size
             // Before that remove resize observer because it can make cycle
             resizeObserver.disconnect()
-            if(checkOverflow()) {
+
+            if(await checkOverflow()) {
               runCalc()
             } else {
               // If it has no overflow set observer back
