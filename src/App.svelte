@@ -35,77 +35,82 @@
 
 
 </script>
+
+
 <div>
-<div
-  on:click = {handler}
-  style="height:{cardHeight}px; width:{cardWidth}px"
-  class='card'
+  <div
+    on:click = {handler}
+    style="height:{cardHeight}px; width:{cardWidth}px"
+    class='card'
 
-  >
-  <h2
-    bind:this={headerNode}
-    style="font-size:{headerSize}px"
-  >
-    { headerText }
-  </h2>
+    >
+    <h2
+      bind:this={headerNode}
+      style="font-size:{headerSize}px"
+    >
+      { headerText }
+    </h2>
 
-  <p
-    class='text'
-    use:ellipsis={{ overflowBadge:'…', affectNode: affectNode }}
-    bind:this={textNode}
-    on:update={eventHandler}
-  >
-    { paintedText.substr(0, paintedText.length / 100 * textFill) }
-  </p>
+    <p
+      class='text'
+      use:ellipsis={{ overflowBadge:'…', affectNode: affectNode }}
+      bind:this={textNode}
+      on:update={eventHandler}
+    >
+      { paintedText.substr(0, paintedText.length / 100 * textFill) }
+    </p>
 
-  <button
-    bind:this={affectNode}
-    style = "display:{hideBtn  ? 'none' : ''}"
-  >
-    Full article
-  </button>
-</div>
-<div class='interface'>
-  <label>
-    Header Size {headerSize}
-    <input
-      type="range"
-      min="12"
-      max="60"
-      bind:value={headerSize}
+    <button
+      bind:this={affectNode}
+      style = "display:{hideBtn  ? 'none' : ''}"
     >
-  </label>
-  <label>
-    Text Fill {textFill}%
-    <input
-      type="range"
-      min="1"
-      max="100"
-      step="1"
-      bind:value={textFill}
-    >
-  </label>
-  <label>
-    Card Width {cardWidth}px
-    <input
-      type="range"
-      min="150"
-      max="450"
-      step="1"
-      bind:value={cardWidth}
-    >
-  </label>
-  <label>
-    Card Height {cardHeight}px
-    <input
-      type="range"
-      min="250"
-      max="600"
-      step="1"
-      bind:value={cardHeight}
-    >
-  </label>
-</div>
+      Full article
+    </button>
+  </div>
+
+
+
+  <div class='interface'>
+    <label>
+      Header Size {headerSize}
+      <input
+        type="range"
+        min="12"
+        max="60"
+        bind:value={headerSize}
+      >
+    </label>
+    <label>
+      Text Fill {textFill}%
+      <input
+        type="range"
+        min="1"
+        max="100"
+        step="1"
+        bind:value={textFill}
+      >
+    </label>
+    <label>
+      Card Width {cardWidth}px
+      <input
+        type="range"
+        min="150"
+        max="450"
+        step="1"
+        bind:value={cardWidth}
+      >
+    </label>
+    <label>
+      Card Height {cardHeight}px
+      <input
+        type="range"
+        min="250"
+        max="600"
+        step="1"
+        bind:value={cardHeight}
+      >
+    </label>
+  </div>
 </div>
 
 <style>

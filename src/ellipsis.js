@@ -1,12 +1,5 @@
 import { tick } from 'svelte';
-const visibilityHidden = `
-  position:absolute;
-  left:0;
-  top:-100%;
-  border:none;
-  opacity:0;
-  visibility:hidden;
-  pointer-events:none;`
+const visibilityHidden = `position:absolute;left:0;top:-100%; border:none;opacity:0;visibility:hidden;pointer-events:none;transform:translateZ(0)`
 
 export default function ellipsis(node, {
   cutLength = 0,
@@ -28,29 +21,41 @@ export default function ellipsis(node, {
 
   // Events
   let event = (data) => new CustomEvent( "update", { detail: data });
+  let event2 = (data) => new CustomEvent( "nodeApdated", { detail: data });
 
-  // init hidden nodes container
-  let nodesContainer = window.__ellipsisNodesContainer;
+  // init ellipsis object
+  let Ellipsis = () => {
+    return (
+      window.__ellipsis
+      ? window.__ellipsis
+      : window.__ellipsis = {
+        affectNodes: new Set(),
+      }
+    )
+  }
 
-  function createHiddenContainer(){
-    if(!nodesContainer){
-      nodesContainer = document.createElement('div')
-      nodesContainer.setAttribute('ariaHidden', true)
-      nodesContainer.setAttribute('id', 'ellipsisNodesContainer')
-      nodesContainer.style.cssText = visibilityHidden
-      document.body.append(nodesContainer)
-      window.__ellipsisNodesContainer = nodesContainer
+
+  function getHiddenContainer(){
+    if(!window.__ellipsisNodesContainer){
+      let container = document.createElement('div')
+      container.setAttribute('ariaHidden', true)
+      container.style.cssText = visibilityHidden
+      document.body.append(container)
+      window.__ellipsisNodesContainer = container
+      return window.__ellipsisNodesContainer
+    } else {
+      return window.__ellipsisNodesContainer
     }
   }
 
   // First init stack
+  // setTimeout(() =>   init(), 3000)
   init()
 
 
   // Main stack runner
   async function init(){
     if(await checkOverflow()){
-      createHiddenContainer()
       cloneNode()
       setParagraphRuler()
       runCalc()
@@ -73,7 +78,7 @@ export default function ellipsis(node, {
     } else {
       clone = _clone;
       node.before(clone)
-      nodesContainer.append(node)
+      getHiddenContainer().append(node)
       setMutationObserver()
     }
   }
@@ -83,7 +88,7 @@ export default function ellipsis(node, {
   function setParagraphRuler(){
     if(typeof paragraphRuler == 'object') paragraphRuler.remove()
     paragraphRuler = node.cloneNode(true)
-    nodesContainer.append(paragraphRuler)
+    getHiddenContainer().append(paragraphRuler)
   }
 
 
@@ -92,10 +97,42 @@ export default function ellipsis(node, {
     node.dispatchEvent(event({type, status}));
   }
 
-  function affectNodeControl(action){
+  let nodesActionDebounce = false;
+  async function nodesActionWatcher(size){
+    if (!nodesActionDebounce){
+      resizeDebounce = true
+      let promise = new Promise(function(resolve, reject) {
+        let timer = setTimeout( async () => {
+          let currentSize = Ellipsis().affectNodes.size;
+          if(currentSize === size) {
+            console.log('true')
+            clearInterval(timer)
+            Ellipsis().affectNodes.forEach(node => {
+              node.style.display = 'none'
+              resolve()
+            });
+          }
+        }, 150)
+      })
+    }
+  }
+
+  async function watcher (){
+    let timerId = setTimeout(function tick() {
+      alert('tick');
+      timerId = setTimeout(tick, 20); // (*)
+    }, 2000);
+  }
+
+
+  async function affectNodeControl(action){
     if(action == 'hide') {
-      affectNode.style.display = 'none'
-      affectNodeIsHidden = true
+      Ellipsis().affectNodes.add(affectNode)
+      await nodesActionWatcher(Ellipsis().affectNodes.size)
+      .then(() => {
+        console.log('hidden')
+        affectNodeIsHidden = true
+      })
     }
 
     if(action == 'show') {
@@ -116,7 +153,7 @@ export default function ellipsis(node, {
     }
 
     // Before check set overflow
-    if(affectNodeIsHidden) affectNodeControl('show')
+    if(affectNodeIsHidden) await affectNodeControl('show')
 
     if( target.clientHeight < target.scrollHeight ) {
       // If is overflow we try to remove affected node
@@ -158,6 +195,7 @@ export default function ellipsis(node, {
   // Calc init
   function runCalc(){
     // If we have enough space for one line
+    console.log('runned')
     if(checkSafeLineHeight()) {
       let ratio = clone.clientHeight / ( clone.scrollHeight / 100);
 
@@ -233,6 +271,15 @@ export default function ellipsis(node, {
 
   // Observer init wrapper for prevent blank run stack scripts
   function setResizeObserver(){
+
+    // queue
+    if(!Ellipsis){
+      let Ellipsis = {};
+      window.Ellipsis = Ellipsis;
+    } else {
+      // Ellipsis.
+    }
+
     resizeObserverBlankRun = true
     resizeObserver.observe(typeof clone == 'object' ? clone : node)
   }

@@ -25,7 +25,7 @@ async function build_client(){
 
 require('esbuild').buildSync({
   entryPoints: ['src/ellipsis.js'],
-  outfile: 'lib/node-esm.js',
+  outfile: '../Allasia_Site-2.0/Front/src/lib/ellipsis.js',
   mainFields: ['module'],
   logLevel: 'info',
   banner : '/* Ellipsis, made by me 😜  https://github.com/zamkevich */' ,
