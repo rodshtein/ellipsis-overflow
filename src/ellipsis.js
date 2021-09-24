@@ -191,6 +191,27 @@ export default function ellipsis(node, {
     return clone.clientHeight >= paragraphRuler.clientHeight
   }
 
+  // Check for is only one line
+  function oneLineCheck(){
+    // We need to set pre-line whitespace for make two line paragraph
+    // Before that let's store inline whitespace style
+    let spaceStyle = paragraphRuler.style.whiteSpace;
+    paragraphRuler.style.whiteSpace = 'pre-line'
+    paragraphRuler.textContent = `1\n2`
+
+    console.log(paragraphRuler.clientHeight)
+    console.log(clone.clientHeight)
+
+    if(paragraphRuler.clientHeight > clone.clientHeight){
+      node.dispatchEvent(event({type: "overflow", status: false}));
+      return false
+    } else {
+      node.dispatchEvent(event({type: "overflow", status: true}));
+      // Reset inline style back
+      paragraphRuler.style.whiteSpace = spaceStyle
+      return true
+    }
+  }
 
   // Calc init
   function runCalc(){
@@ -223,6 +244,7 @@ export default function ellipsis(node, {
     currCycle = currCycle ? currCycle : ++sliceCycle;
     // kill slicer if we have new cycle
     if(currCycle != sliceCycle)  return
+    // console.log(currCycle)
 
     let string = node.textContent.substr(0, length) + overflowBadge;
     paragraphRuler.textContent = string

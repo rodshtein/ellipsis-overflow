@@ -36,6 +36,43 @@
 
 </script>
 
+	<p
+		class='text'
+		use:ellipsis={{ overflowBadge:' ' }}
+		bind:this={textNode}
+		on:update={eventHandler}
+	>
+		{ paintedText.substr(0, paintedText.length / 100 * textFill) }
+	</p>
+
+	<button
+		hidden = {overflow ? false : true}
+	>
+		Full article
+	</button>
+</div>
+<div class='interface'>
+	<label>
+		Header size {headerSize}
+		<input
+			type="range"
+			min="12"
+			max="60"
+			bind:value={headerSize}
+		>
+	</label>
+	<label>
+		Text fill {textFill}%
+		<input
+			type="range"
+			min="1"
+			max="100"
+			step="1"
+			bind:value={textFill}
+		>
+	</label>
+</div>
+</div>
 
 <div>
   <div
@@ -114,6 +151,7 @@
 </div>
 
 <style>
+<<<<<<< HEAD
 /* Base styles */
 .card {
   display: grid;
@@ -144,4 +182,33 @@ label {
 input {
   display: block;
 }
+=======
+	/* Base styles */
+	.card {
+    display: grid;
+		grid-auto-flow: row;
+		justify-items: left;
+    width: 208px;
+    height: 380px;
+		padding: 30px 15px 10px;
+	}
+
+	.card {
+	 background-color: rgb(245, 245, 233);
+	}
+
+	p {
+		overflow: hidden;
+	}
+
+	/* Decoration styles */
+
+	label {
+		width: 100%;
+		display: block;
+	}
+	input {
+		display: block;
+	}
+>>>>>>> fe373aaac939f73d61b13c5c7211bf718f17f2e7
 </style>
